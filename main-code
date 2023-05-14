@@ -1,0 +1,137 @@
+import nltk
+import requests
+
+# Create a class for the chatbot.
+class Chatbot:
+
+    # Initialize the chatbot.
+    def __init__(self):
+        # Initialize the chatbot's responses.
+        self.responses = []
+        self.load_responses()
+
+    # Load the chatbot's responses from a file.
+    def load_responses(self):
+        # Open the file containing the chatbot's responses.
+        with open('responses.txt', 'r') as f:
+            # Read the lines from the file.
+            lines = f.readlines()
+
+            # Add the lines to the chatbot's responses.
+            for line in lines:
+                self.responses.append(line.strip())
+
+    # Generate a response to a user's input.
+    def generate_response(self, message):
+        # Use a more sophisticated algorithm to generate a response.
+        # This algorithm could be improved.
+
+        # Get the most similar response.
+        best_match = None
+        best_score = 0
+        for response in self.responses:
+            score = self.get_similarity_score(message, response)
+            if score > best_score:
+                best_match = response
+                best_score = score
+
+        # Return the best match.
+        return best_match
+
+    # Calculate the similarity score between two messages.
+    def get_similarity_score(self, message1, message2):
+        # This is a more sophisticated algorithm to calculate the similarity score between two messages.
+        # This algorithm could be improved.
+
+        # Create a vector for each message.
+        vector1 = nltk.word_vector(message1)
+        vector2 = nltk.word_vector(message2)
+
+        # Calculate the cosine similarity between the two vectors.
+        similarity_score = nltk.cosine_similarity(vector1, vector2)
+
+        return similarity_score
+
+    # Start a conversation with the user.
+    def chat(self):
+        # This is a simple chatbot that uses the generate_response() method to generate responses to user input.
+
+        while True:
+            # Get the user's input.
+            message = input('What would you like to say? ')
+
+            # If the user asks a question, the chatbot can use Google Search to find the answer.
+            if '?' in message:
+                query = message.replace('?', '')
+                response = self.get_search_results(query)
+                print('The chatbot says:', response)
+
+            # If the user asks a new question, the chatbot can add the question and answer to its memory.
+            if message not in self.responses:
+                self.responses.append(message)
+                self.responses.append(response)
+
+            # If the user asks the chatbot to learn, the chatbot can use Google Search to find the information and add it to its memory.
+            if 'learn' in message:
+                # Split the message into words.
+                words = message.split()
+
+                # Get the information that the user wants to learn.
+                information = words[words.index('learn') + 1]
+
+                # Use Google Search to find the information.
+                response = requests.get('https://www.googleapis.com/customsearch/v1?key=YOUR_API_KEY&cx=YOUR_SEARCH_ENGINE_ID&q=' + information)
+
+                # Check the response status code.
+                if response.status_code == 200:
+                    # The request was successful.
+                    results = response.json()['items']
+
+                    # Add the information to the chatbot's memory.
+                    for result in results:
+                        self.memory.append(result['snippet'])
+                else:
+                    # The request failed.
+                    print('Error:', response.status_code)
+
+            # If the user asks the chatbot to play a game, the chatbot can play a game with the user.
+            if 'play' in message:
+                # Split the message into words.
+                words = message.split()
+
+                # Get the name of the game that the user wants to play.
+                game = words[words.index('play') + 1]
+
+                # If the game is supported, play the game with the user.
+                if game in ['tictactoe', 'guessing game', 'hangman']:
+                    # Play the game.
+                    if game == 'tictactoe':
+                        # Play tic-tac-toe with the user.
+                        user = input('What is your name? ')
+                        self.play_tictactoe(user)
+                    elif game == 'guessing game':
+                        # Play a guessing game with the user.
+                        self.play_guessing_game(user)
+                    elif game == 'hangman':
+                        # Play hangman with the user.
+                        self.play_hangman(user)
+                else:
+                    # The game is not supported.
+                    print('The chatbot says: I don\'t know how to play that game.')
+
+            # If the user asks the chatbot to do something else, the chatbot can try to do it.
+            else:
+                # Try to do what the user asked.
+                try:
+                    eval(message)
+                except Exception as e:
+                    print('The chatbot says: I don\'t understand what you mean.')
+
+                # If the user asks the chatbot to repeat itself, the chatbot can repeat its last response.
+                if 'repeat' in message:
+                    print('The chatbot says:', message)
+
+                # If the user asks the chatbot to exit, the chatbot can exit the conversation.
+                if 'exit' in message:
+                    print('The chatbot says: Goodbye!')
+                    break
