@@ -1,48 +1,143 @@
-# Import the necessary libraries and modules
+# Import libraries
 import torch
-import transformers
+from transformers import GPT2Tokenizer, GPT2LMHeadModel
+import random 
+import spacy 
+nlp = spacy.load("en_core_web_sm") 
 
+# Define some constants
+MAX_LENGTH = 50 
+MIN_LENGTH = 10 
+TEMPERATURE = 0.8 
+PERSONALITY = "I am a friendly and curious chatbot. I like to learn new things and talk to people." 
+
+# Define some lists of synonyms, paraphrases, or alternative expressions for common words or phrases
+HELLO = ["Hello", "Hi", "Hey", "Greetings", "Salutations"]
+NAME = ["name", "moniker", "alias", "nickname", "handle"]
+ASK_NAME = ["What is your {name}?", "How do you call yourself?", "How should I address you?", "What do you go by?"]
+NICE_TO_MEET = ["Nice to meet you", "Pleased to make your acquaintance", "It's a pleasure to talk to you", "I'm happy to chat with you"]
+PLEASE_SAY = ["Please say something", "Don't be shy", "Come on, talk to me", "I'm listening"]
+SORRY = ["Sorry", "Apologies", "My bad", "Oops"]
+SOMETHING_WRONG = ["something went wrong", "there was an error", "there was a glitch", "there was a problem"]
+TRY_AGAIN = ["Please try again", "Let's start over", "Let's try once more", "One more time"]
+THANK_YOU = ["Thank you", "Thanks", "I appreciate it", "That's very kind of you"]
+YOU_ARE_WELCOME = ["You are welcome", "You're welcome", "No problem", "My pleasure"]
+ASK_FEEDBACK = ["How do you like this chatbot?", "What do you think of this chatbot?", "How satisfied are you with this chatbot?", "Do you enjoy talking to this chatbot?"]
+RATE_CHATBOT = ["Please rate this chatbot from 1 (poor) to 5 (excellent)", "Please give this chatbot a score from 1 (low) to 5 (high)", "Please evaluate this chatbot on a scale from 1 (bad) to 5 (good)", "Please rank this chatbot from 1 (worst) to 5 (best)"]
+COMMENT_CHATBOT = ["Please leave a comment or suggestion for this chatbot", "Please write a feedback or review for this chatbot", "Please share your opinion or experience with this chatbot", "Please tell me what you like or dislike about this chatbot"]
 
 # Define the ChatBot class
 class ChatBot:
-    def __init__(self, tokenizer, model):
-        # Initialize the tokenizer and model attributes
-        self.tokenizer = tokenizer
-        self.model = model
+    def __init__(self):
+        # Initialize the tokenizer and model
+        self.tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+        self.model = GPT2LMHeadModel.from_pretrained("gpt2").to("cuda")
+        # Encode the personality of the chatbot
+        self.personality_ids = self.tokenizer.encode(PERSONALITY, return_tensors="pt").to("cuda")
+        # Initialize the user name and information
+        self.user_name = None
+        self.user_info = {}
+        # Initialize the evaluation and feedback variables
+        self.perplexity_sum = 0 
+        self.bleu_sum = 0 
+        self.rouge_sum = 0 
+        self.response_count = 0 
+        self.user_rating = None 
+        self.user_comment = None 
 
     def generate_response(self, input_text):
-        # Tokenize the input text and add the special tokens
-        input_ids = self.tokenizer.encode(input_text, return_tensors='pt')
-        # Convert the eos_token_id to a tensor and concatenate it with the input ids
-        input_ids = torch.cat([input_ids, torch.tensor(self.tokenizer.eos_token_id)], dim=-1)
-
-        # Generate a response using the model
-        output_ids = self.model.generate(input_ids, max_length=50)
-
-        # Decode the output ids and remove the special tokens
+        # Check if the input text is empty or invalid
+        if not input_text or not input_text.strip():
+            return random.choice(PLEASE_SAY) 
+        # Encode the input text
+        input_ids = self.tokenizer.encode(input_text, return_tensors="pt").to("cuda")
+        # Concatenate the personality and the input text
+        input_ids = torch.cat([self.personality_ids, input_ids], dim=-1)
+        # Generate a response from the model with some parameters
+        output_ids = self.model.generate(input_ids, max_length=MAX_LENGTH, min_length=MIN_LENGTH, do_sample=True, temperature=TEMPERATURE)
+        # Decode the output text
         output_text = self.tokenizer.decode(output_ids[0], skip_special_tokens=True)
-
-        # Return the output text
+        # Remove the personality from the output text
+        output_text = output_text.replace(PERSONALITY, "").strip()
         return output_text
 
-# Initialize the tokenizer and model using a pre-trained GPT-2 model
-tokenizer = transformers.GPT2Tokenizer.from_pretrained('gpt2')
-model = transformers.GPT2LMHeadModel.from_pretrained('gpt2')
+    def analyze_input(self, input_text):
+        # Analyze the input text using some natural language processing tools
+        # For example, use spaCy to perform tokenization, lemmatization, part-of-speech tagging, named entity recognition, and sentiment analysis
+        # This could help to extract useful information from the input text and use it to generate more relevant, accurate, and diverse responses
+        # Create a spaCy document object from the input text
+        doc = nlp(input_text)
+        
+        # Use the information from the spaCy document object to update the user information
+        # For example, if the input text contains a named entity of type PERSON, assume it is the user name and store it
+        # Or, if the input text contains a named entity of type GPE (geopolitical entity), assume it is the user location and store it
+        # Or, if the input text contains a sentiment score, assume it is the user mood and store it
+        # This could help to personalize the response based on the user name, location, and mood
+        for ent in doc.ents:
+            if ent.label_ == "PERSON":
+                self.user_name = ent.text
+            elif ent.label_ == "GPE":
+                self.user_info["location"] = ent.text
 
-# Create an instance of the ChatBot class
-chatbot = ChatBot(tokenizer, model)
+        if doc.sentiment > 0.5:
+            self.user_info["mood"] = "positive"
+        elif doc.sentiment < -0.5:
+            self.user_info["mood"] = "negative"
+        else:
+            self.user_info["mood"] = "neutral"
 
-# Start the main loop
-while True:
-    # Get the user input
-    user_input = input('User: ')
+    def analyze_response(self, response):
+        # Analyze the response using some natural language processing tools
+        # For example, use spaCy to perform tokenization, lemmatization, part-of-speech tagging, named entity recognition, and sentiment analysis
+        # This could help to extract useful information from the response and use it to generate more relevant, accurate, and diverse responses
+        # Create a spaCy document object from the response
+        doc = nlp(response)
+        
+# Print or store some information from the spaCy document object
+print(f"Tokens: {[token.text for token in doc]}")
+print(f"Lemmas: {[token.lemma_ for token in doc]}")
+print(f"POS tags: {[token.pos_ for token in doc]}")
+print(f"Named entities: {[ent.text for ent in doc.ents]}")
+print(f"Sentiment: {doc.sentiment}")
 
-    # Check if the user wants to quit
-    if user_input.lower() == 'quit':
-        break
+# Use the information from the spaCy document object to diversify the response
+# For example, if the response contains a word or phrase that has a synonym or paraphrase in one of the lists, replace it with a random expression from the corresponding list
+# Or, if the response contains a named entity of type ORG (organization), PERSON (person), or GPE (geopolitical entity), add some trivia or facts about it from Wikipedia or Bing search results
+# This could help to make the response more interesting and informative for the user
+words = response.split()
+for i, word in enumerate(words):
+    if word.lower() in HELLO:
+        words[i] = random.choice(HELLO)
+    elif word.lower() in NAME:
+        words[i] = random.choice(NAME)
+    elif word.lower() in SORRY:
+        words[i] = random.choice(SORRY)
 
-    # Generate a response using the chatbot
-    response = chatbot.generate_response(user_input)
+phrases = [" ".join(words[i:i+2]) for i in range(len(words) - 1)]
+for i, phrase in enumerate(phrases):
+    if phrase.lower() in ASK_NAME:
+        phrases[i] = random.choice(ASK_NAME).format(name=random.choice(NAME))
+    elif phrase.lower() in NICE_TO_MEET:
+        phrases[i] = random.choice(NICE_TO_MEET)
+    elif phrase.lower() in SOMETHING_WRONG:
+        phrases[i] = random.choice(SOMETHING_WRONG)
+    elif phrase.lower() in TRY_AGAIN:
+        phrases[i] = random.choice(TRY_AGAIN)
 
-    # Print the response
-    print('ChatBot: ' + response)
+for ent in doc.ents:
+    if ent.label_ == "ORG":
+        trivia = search_web(ent.text + " trivia") # Use Bing search to get some trivia about the organization
+        if trivia:
+            response += f" Did you know that {trivia[0]}?" # Add a trivia fact to the response
+    elif ent.label_ == "PERSON":
+        summary = search_web(ent.text + " summary") # Use Bing search to get a summary about the person
+        if summary:
+            response += f" {summary[0]}" # Add a summary sentence to the response
+    elif ent.label_ == "GPE":
+        fact = search_web(ent.text + " fact") # Use Bing search to get a fact about the geopolitical entity
+        if fact:
+            response += f" Here is a fact about {ent.text}: {fact[0]}" # Add a fact sentence to the response
+
+# Return the diversified response
+return response
+
